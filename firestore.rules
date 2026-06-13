@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    // 1. Medicines collection: readable by all so anyone can scan and verify. 
+    // In our capstone app, manufacturers can register and update medicine scan states.
+    match /medicines/{medicineId} {
+      allow read: if true;
+      allow create, update: if isValidId(medicineId) && request.resource.data.name is string;
+      allow delete: if false;
+    }
+
+    // 2. Scans validation logs: writable upon verification, historically auditable.
+    match /scans/{scanId} {
+      allow read: if true;
+      allow create: if isValidId(scanId) && request.resource.data.scannedToken is string;
+      allow update, delete: if false;
+    }
+
+    // 3. Counterfeit and security incident complaints:
+    match /reports/{reportId} {
+      allow read: if true;
+      allow create: if isValidId(reportId) && request.resource.data.medicineName is string;
+      allow update: if isValidId(reportId); // allow status transitions from the Watchtower command
+      allow delete: if false;
+    }
+
+    // 4. One-time verification tokens (OTPs):
+    // CRITICAL: In a production environment, direct client-side access (from the React browser app)
+    // to this collection must be completely blocked (allow read, write: if false;).
+    // Currently, because the server.js backend also uses the Firebase Client SDK in an unauthenticated manner,
+    // we must allow 'create', 'get', and 'list' so the server can generate and check verification codes.
+    // However, we completely block 'update' and 'delete' operations.
+    // TODO: Migrate the server.js to use the Firebase Admin SDK (with a private service account key) 
+    // to completely deny all client-side direct access from the browser before production deployment.
+    match /otps/{otpId} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // 5. Registered Pharmaceutical Manufacturers:
+    match /manufacturers/{mfgId} {
+      allow read: if true; // Public listing for FDA watch compliance transparency
+      allow create, update: if isValidId(mfgId) && request.resource.data.companyName is string && request.resource.data.accessPin is string;
+      allow delete: if false;
+    }
+
+    // 6. Partitioned siloed medicines subcollection per manufacturer:
+    match /manufacturers/{mfgId}/medicines/{medicineId} {
+      allow read: if true; // Allowed for patient verification searches and traceability
+      allow create, update: if isValidId(mfgId) && isValidId(medicineId) && request.resource.data.name is string;
+      allow delete: if false;
+    }
+
+    // 7. Expiry and recall alerts pushed from administration to patients:
+    match /alerts/{alertId} {
+      allow read: if true; // In capstone mode, allowed so users can retrieve alerts paired with their phone numbers
+      allow create, update: if isValidId(alertId) && request.resource.data.alertMessage is string;
+      allow delete: if false;
+    }
+  }
+}

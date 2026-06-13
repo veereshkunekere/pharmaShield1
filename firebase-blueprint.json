@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "manufacturer": {
+      "title": "Manufacturer",
+      "description": "Authentication and physical profile details for registered pharmaceutical manufacturers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "licenceKey": { "type": "string" },
+        "companyDetails": { "type": "string" },
+        "registeredAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REVOKED"] },
+        "contactPhone": { "type": "string" },
+        "accessPin": { "type": "string", "description": "Manufacturer security master entry PIN." }
+      },
+      "required": ["id", "companyName", "licenceKey", "status", "accessPin"]
+    },
+    "medicine": {
+      "title": "Medicine",
+      "description": "Cryptographic signature registry of legitimate drugs issued by verified manufacturers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the drug profile." },
+        "name": { "type": "string", "description": "Commercial drug brand name." },
+        "batchNumber": { "type": "string", "description": "Unique trade batch control number." },
+        "mfgDate": { "type": "string", "description": "ISO date representing manufacturing release." },
+        "expiryDate": { "type": "string", "description": "ISO date representing clinical expiration date." },
+        "companyName": { "type": "string", "description": "Licensed pharmaceutical manufacturer name." },
+        "companyDetails": { "type": "string", "description": "Registered address, licenses, and credentials." },
+        "qrCodeToken": { "type": "string", "description": "One-time cryptographically unique scanning token." },
+        "maxScansAllowed": { "type": "integer", "description": "Anti-counterfeiting limit (usually exactly 1)." },
+        "currentScanCount": { "type": "integer", "description": "Total verification attempts submitted for this token." },
+        "firstScannedAt": { "type": "string", "description": "ISO timestamp of the first successful verification." },
+        "registeredAt": { "type": "string", "description": "ISO registration timestamp." },
+        "status": { "type": "string", "enum": ["ACTIVE", "REVOKED", "EXPIRED"], "description": "Drug active state." }
+      },
+      "required": ["id", "name", "batchNumber", "qrCodeToken", "status"]
+    },
+    "scan_record": {
+      "title": "ScanRecord",
+      "description": "Audited scan verification instance recorded by patients.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "scannedToken": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "scannedAt": { "type": "string" },
+        "userPhone": { "type": "string", "description": "Email or mobile details of patient." },
+        "result": { "type": "string", "enum": ["GENUINE", "FAKE_UNREGISTERED", "FAKE_REUSED", "EXPIRED"] },
+        "verifiedWithOtp": { "type": "boolean" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "city": { "type": "string" }
+          },
+          "required": ["lat", "lng", "city"]
+        }
+      },
+      "required": ["id", "scannedToken", "scannedAt", "userPhone", "result", "verifiedWithOtp"]
+    },
+    "reported_case": {
+      "title": "ReportedCase",
+      "description": "Complaint file logged by users containing GPS coordinates and manufacturer context.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "companyName": { "type": "string" },
+        "reportedAt": { "type": "string" },
+        "comment": { "type": "string" },
+        "reporterPhone": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "INVESTIGATING", "RESOLVED", "COMPROMISED"] },
+        "evidenceImg": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "city": { "type": "string" }
+          },
+          "required": ["lat", "lng", "city"]
+        }
+      },
+      "required": ["id", "medicineName", "batchNumber", "reportedAt", "reporterPhone", "status"]
+    },
+    "otp_log": {
+      "title": "OtpLog",
+      "description": "Active session validation entries created in real-time.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "emailOrPhone": { "type": "string", "description": "Destination address for authentication." },
+        "otpCode": { "type": "string", "description": "6-digit or 4-digit code generated." },
+        "createdAt": { "type": "string" },
+        "expiredAt": { "type": "string" },
+        "type": { "type": "string", "enum": ["LOGIN", "SCAN"] }
+      },
+      "required": ["id", "emailOrPhone", "otpCode", "createdAt", "expiredAt", "type"]
+    },
+    "expiry_alert": {
+      "title": "ExpiryAlert",
+      "description": "Critical alerting messages pushed from Administrator command to purchasers regarding batch expiration risks.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "alertMessage": { "type": "string" },
+        "severity": { "type": "string", "enum": ["WARNING", "CRITICAL", "INFO"] },
+        "sentAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["UNREAD", "READ"] }
+      },
+      "required": ["id", "userPhone", "medicineName", "batchNumber", "expiryDate", "alertMessage", "severity", "sentAt", "status"]
+    }
+  },
+  "firestore": {
+    "medicines": {
+      "schema": "medicine",
+      "description": "Public ledger profiles of registered pharmaceutical items."
+    },
+    "manufacturers": {
+      "schema": "manufacturer",
+      "description": "Directory of officially registered and credentialed medicine manufacturers."
+    },
+    "manufacturers/{mfgId}/medicines": {
+      "schema": "medicine",
+      "description": "Siloed private medicines directory exclusive to each registered manufacturer."
+    },
+    "scans": {
+      "schema": "scan_record",
+      "description": "Realtime tracked collection of scan verification audits."
+    },
+    "reports": {
+      "schema": "reported_case",
+      "description": "Patient complaints and reports filed upon detecting counterfeits."
+    },
+    "otps": {
+      "schema": "otp_log",
+      "description": "Realtime session challenge tokens for verifying login actions and receipts."
+    },
+    "alerts": {
+      "schema": "expiry_alert",
+      "description": "System watchtower notifications published to inform customers of unsafe drug expirations."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Remix: Fake Medicine Detection System",
+  "description": "A comprehensive system to verify medicine genuineness using one-time QR codes, OTP authentication, custom security profiles, and location-based counterfeit tracking.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
