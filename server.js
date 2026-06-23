@@ -4,6 +4,8 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, 
@@ -109,6 +111,7 @@ function getMailTransporter() {
     host,
     port,
     secure,
+    family:4,
     auth: {
       user,
       pass,

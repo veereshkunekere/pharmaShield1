@@ -130,6 +130,19 @@ export default function UserModule({
     }
   };
 
+ const speakResult = (text, lang = "en-IN") => {
+  if (!("speechSynthesis" in window)) return;
+
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang;
+  utterance.rate = 0.95;
+  utterance.pitch = 1;
+
+  speechSynthesis.speak(utterance);
+};
+
   const startCamera = async () => {
     setCameraError(null);
     try {
@@ -518,6 +531,139 @@ export default function UserModule({
       .toLowerCase();
     return normAl.includes(normUser) || normUser.includes(normAl);
   });
+
+  const [speechLanguage, setSpeechLanguage] = useState("en");
+
+ useEffect(() => {
+  if (screen === "RESULT_GENUINE" && scannedMedicine) {
+    speakMedicineDetails();
+  }
+}, [screen, scannedMedicine, speechLanguage]);
+
+useEffect(() => {
+  if (screen !== "RESULT_FAKE") return;
+
+  if (speechLanguage === "te") {
+    if (scanResultType === "FAKE_REUSED") {
+      speakResult(
+        "హెచ్చరిక. ఈ మందు క్యూ ఆర్ కోడ్ ఇప్పటికే ఉపయోగించబడింది. ఇది నకిలీ మందు కావచ్చు.",
+        "te-IN"
+      );
+    } else if (scanResultType === "EXPIRED") {
+      speakResult(
+        "హెచ్చరిక. ఈ మందు గడువు ముగిసింది. దయచేసి ఈ మందును ఉపయోగించవద్దు.",
+        "te-IN"
+      );
+    } else {
+      speakResult(
+        "హెచ్చరిక. ఈ మందు ధృవీకరించబడలేదు. ఇది నకిలీ మందు కావచ్చు.",
+        "te-IN"
+      );
+    }
+  } else if (speechLanguage === "hi") {
+    if (scanResultType === "FAKE_REUSED") {
+      speakResult(
+        "चेतावनी। इस दवा का क्यू आर कोड पहले ही उपयोग किया जा चुका है। यह नकली दवा हो सकती है।",
+        "hi-IN"
+      );
+    } else if (scanResultType === "EXPIRED") {
+      speakResult(
+        "चेतावनी। इस दवा की समाप्ति तिथि निकल चुकी है। कृपया इसका उपयोग न करें।",
+        "hi-IN"
+      );
+    } else {
+      speakResult(
+        "चेतावनी। इस दवा का सत्यापन नहीं हो सका। यह नकली हो सकती है।",
+        "hi-IN"
+      );
+    }
+  } else {
+    if (scanResultType === "FAKE_REUSED") {
+      speakResult(
+        "Warning. This medicine QR code has already been used. Possible counterfeit product.",
+        "en-IN"
+      );
+    } else if (scanResultType === "EXPIRED") {
+      speakResult(
+        "Warning. This medicine has expired. Do not consume this product.",
+        "en-IN"
+      );
+    } else {
+      speakResult(
+        "Alert. This medicine could not be verified. It may be fake or counterfeit.",
+        "en-IN"
+      );
+    }
+  }
+}, [screen, scanResultType, speechLanguage]);
+
+const voices = speechSynthesis.getVoices();
+console.log("voices sre:")
+console.log(
+  voices.map(v => ({
+    name: v.name,
+    lang: v.lang
+  }))
+);
+
+const speakMedicineDetails = () => {
+  if (!scannedMedicine) return;
+
+  const dosage =
+    scannedMedicine.dosage ||
+    scannedMedicine.recommendedDosage ||
+    "Not available";
+
+  const ingredients =
+    scannedMedicine.activeIngredients ||
+    "Not available";
+
+  if (speechLanguage === "hi") {
+    speakResult(
+      `
+      दवा सफलतापूर्वक सत्यापित की गई है।
+      दवा का नाम ${scannedMedicine.name}.
+      निर्माता ${scannedMedicine.companyName}.
+      बैच नंबर ${scannedMedicine.batchNumber}.
+      समाप्ति तिथि ${scannedMedicine.expiryDate}.
+      खुराक ${dosage}.
+      सामग्री ${ingredients}.
+      यह दवा असली और सुरक्षित है।
+      `,
+      "hi-IN"
+    );
+  } else if (speechLanguage === "te") {
+    speakResult(
+      `
+      మందు విజయవంతంగా ధృవీకరించబడింది.
+      మందు పేరు ${scannedMedicine.name}.
+      తయారీదారు ${scannedMedicine.companyName}.
+      బ్యాచ్ నంబర్ ${scannedMedicine.batchNumber}.
+      గడువు తేదీ ${scannedMedicine.expiryDate}.
+      మోతాదు ${dosage}.
+      పదార్థాలు ${ingredients}.
+      ఈ మందు అసలైనది మరియు సురక్షితమైనది.
+      `,
+      "te-IN"
+    );
+  } else {
+    speakResult(
+      `
+      Medicine verified successfully.
+      Medicine name ${scannedMedicine.name}.
+      Manufacturer ${scannedMedicine.companyName}.
+      Batch number ${scannedMedicine.batchNumber}.
+      Expiry date ${scannedMedicine.expiryDate}.
+      Dosage ${dosage}.
+      Ingredients ${ingredients}.
+      This medicine is genuine and safe to use.
+      `,
+      "en-IN"
+    );
+  }
+};
+
+
 
   return (
     <div
@@ -1520,6 +1666,49 @@ export default function UserModule({
                 >
                   Return to Panel
                 </button>
+                <div className="space-y-2 mt-3">
+  <button
+    onClick={speakMedicineDetails}
+    className="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg"
+  >
+    🔊 Read Details
+  </button>
+
+  <div className="flex gap-2">
+    <button
+      onClick={() => setSpeechLanguage("en")}
+      className={`flex-1 py-1 rounded text-xs ${
+        speechLanguage === "en"
+          ? "bg-indigo-600 text-white"
+          : "bg-zinc-100"
+      }`}
+    >
+      English
+    </button>
+
+    <button
+      onClick={() => setSpeechLanguage("hi")}
+      className={`flex-1 py-1 rounded text-xs ${
+        speechLanguage === "hi"
+          ? "bg-indigo-600 text-white"
+          : "bg-zinc-100"
+      }`}
+    >
+      हिन्दी
+    </button>
+
+    <button
+      onClick={() => setSpeechLanguage("te")}
+      className={`flex-1 py-1 rounded text-xs ${
+        speechLanguage === "te"
+          ? "bg-indigo-600 text-white"
+          : "bg-zinc-100"
+      }`}
+    >
+      తెలుగు
+    </button>
+  </div>
+</div>
               </div>
             )}
 
@@ -1791,6 +1980,26 @@ export default function UserModule({
                 >
                   Return to Home
                 </button>
+                <button
+  onClick={() => {
+    if (scanResultType === "FAKE_REUSED") {
+      speakResult(
+        "Warning. This medicine QR code has already been used. Possible counterfeit product."
+      );
+    } else if (scanResultType === "EXPIRED") {
+      speakResult(
+        "Warning. This medicine has expired. Do not consume this product."
+      );
+    } else {
+      speakResult(
+        "Alert. This medicine could not be verified and may be counterfeit."
+      );
+    }
+  }}
+  className="px-3 py-2 bg-rose-600 text-white rounded-lg"
+>
+  🔊 Read Warning
+</button>
               </div>
             )}
 
