@@ -128,7 +128,7 @@ async function sendEmailOtp(to, otp, type) {
   const fromAddress = process.env.SMTP_FROM || "no-reply@pharmaguard.com";
 
   if (!transporter) {
-    console.log(`[Email Simulated Dispatch] To: ${to} | Content: ${msgContent}`);
+    console.log("no transporter");
     return {
       success: true,
       provider: "email_simulation",
